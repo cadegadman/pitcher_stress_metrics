@@ -1161,59 +1161,64 @@ def build_pitcher_stats(season):
 # TEST OUTPUT
 # ==================================================
 
+# ==================================================
+# EXPORT SEASON LEADERBOARDS
+# ==================================================
+
+from pathlib import Path
+
+LEADERBOARD_DIR = Path("data/leaderboards")
+LEADERBOARD_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def export_leaderboard(season):
+    (
+        stats,
+        aps_reference_mean,
+        aps_reference_std,
+        aps_reference_count,
+    ) = build_pitcher_stats(season)
+
+    output = stats[
+        [
+            "pitcher",
+            "player_name",
+            "official_ip",
+            "ip_decimal",
+            "pitches",
+            "stressful_pitches",
+            "ps_pct",
+            "aps",
+            "aps_plus",
+            "total_stress",
+            "ss_per_9",
+        ]
+    ].copy()
+
+    output["season"] = season
+    output["aps_reference_mean"] = aps_reference_mean
+    output["aps_reference_std"] = aps_reference_std
+    output["aps_reference_count"] = aps_reference_count
+
+    output_file = (
+        LEADERBOARD_DIR
+        / f"leaderboard_{season}.csv"
+    )
+
+    output.to_csv(
+        output_file,
+        index=False,
+    )
+
+    print(
+        f"Saved {season} leaderboard "
+        f"to {output_file}"
+    )
+
+
 if __name__ == "__main__":
 
-    print(
-        "\nFIXED COUNT STRESS TABLE"
-    )
+    for season in AVAILABLE_SEASONS:
+        export_leaderboard(season)
 
-    print(
-        count_stress_table
-    )
-
-    print(
-        "\nFIXED BASE-OUT STRESS TABLE"
-    )
-
-    print(
-        base_out_re
-    )
-
-    print(
-        f"\n{DEFAULT_SEASON} "
-        "PITCHER STRESS LEADERBOARD"
-    )
-
-    print(
-        pitcher_stats[
-            [
-                "player_name",
-                "pitches",
-                "official_ip",
-                "ps_pct",
-                "aps",
-                "aps_plus",
-                "ss_per_9",
-            ]
-        ]
-        .head(30)
-    )
-
-    print(
-        f"\n{DEFAULT_SEASON} APS+ REFERENCE"
-    )
-
-    print(
-        f"Reference pitchers: "
-        f"{aps_reference_count}"
-    )
-
-    print(
-        f"Reference mean APS: "
-        f"{league_aps:.3f}"
-    )
-
-    print(
-        f"Reference APS SD: "
-        f"{league_aps_std:.3f}"
-    )
+    print("\nAll leaderboard files created.")

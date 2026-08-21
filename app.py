@@ -1,10 +1,26 @@
+from pathlib import Path
+
 import pandas as pd
 import streamlit as st
 
-from count_stress_data import (
-    AVAILABLE_SEASONS,
-    DEFAULT_SEASON,
-    build_pitcher_stats,
+
+# ==================================================
+# SETTINGS
+# ==================================================
+
+AVAILABLE_SEASONS = [
+    2026,
+    2025,
+    2024,
+    2023,
+    2022,
+    2021,
+]
+
+DEFAULT_SEASON = 2026
+
+LEADERBOARD_DIR = Path(
+    "data/leaderboards"
 )
 
 
@@ -17,6 +33,23 @@ st.set_page_config(
     page_icon="⚾",
     layout="wide",
 )
+
+
+# ==================================================
+# LOAD SEASON LEADERBOARD
+# ==================================================
+
+@st.cache_data
+def load_leaderboard(season):
+
+    file = (
+        LEADERBOARD_DIR
+        / f"leaderboard_{season}.csv"
+    )
+
+    df = pd.read_csv(file)
+
+    return df
 
 
 # ==================================================
@@ -45,24 +78,40 @@ selected_season = st.sidebar.selectbox(
 
 
 # ==================================================
-# LOAD SELECTED SEASON
+# LOAD DATA
 # ==================================================
 
-(
-    pitcher_stats,
-    league_aps,
-    league_aps_std,
-    aps_reference_count,
-) = build_pitcher_stats(
+season_df = load_leaderboard(
     selected_season
+)
+
+league_aps = (
+    season_df[
+        "aps_reference_mean"
+    ]
+    .iloc[0]
+)
+
+league_aps_std = (
+    season_df[
+        "aps_reference_std"
+    ]
+    .iloc[0]
+)
+
+aps_reference_count = (
+    season_df[
+        "aps_reference_count"
+    ]
+    .iloc[0]
 )
 
 
 # ==================================================
-# BUILD DISPLAY LEADERBOARD
+# DISPLAY LEADERBOARD
 # ==================================================
 
-leaderboard = pitcher_stats[
+leaderboard = season_df[
     [
         "player_name",
         "official_ip",
@@ -397,10 +446,6 @@ pitches.
 **What it tells you:** How stressful is the environment of the
 pitcher's typical pitch?
 
-A pitcher with a low APS consistently avoids traffic, works in
-favorable counts, and limits the number of pitches thrown in
-difficult situations.
-
 ---
 
 ### APS+ — Average Pitch Stress Plus
@@ -410,21 +455,14 @@ difficult situations.
 APS+ places a pitcher's APS on a standardized league-relative
 scale.
 
-The comparison population is made up of pitchers with meaningful
-pitch samples during the selected season.
-
 - **100** = average
 - **115** = approximately one standard deviation better
 - **130** = approximately two standard deviations better
 - **145** = approximately three standard deviations better
 - **85** = approximately one standard deviation worse
 
-Because lower raw APS is better, APS+ reverses the direction so
+Because lower raw APS is better, APS+ reverses the scale so
 higher numbers represent better stress avoidance.
-
-**What it tells you:** How exceptional is a pitcher's ability to
-avoid stressful pitching environments compared with his MLB
-peers?
 
 ---
 
@@ -435,17 +473,10 @@ peers?
 PS% measures the percentage of a pitcher's total pitches that
 qualify as stressful pitches.
 
-A pitch currently qualifies as stressful when its Pitch Stress
-Score is **40 or higher**.
+A pitch qualifies as stressful when its Pitch Stress Score is
+**40 or higher**.
 
 **PS% = Stressful Pitches / Total Pitches × 100**
-
-**What it tells you:** How often does a pitcher have to operate
-in genuinely stressful situations?
-
-APS measures the pitcher's entire stress environment, while PS%
-specifically measures how frequently that pitcher crosses into
-the high-stress range.
 
 ---
 
@@ -456,19 +487,10 @@ the high-stress range.
 SS/9 measures how much total Pitch Stress a pitcher accumulates
 over the equivalent of nine innings.
 
-Every Pitch Stress Score a pitcher records is added together to
-create his total Stress Score workload. That total is then
-normalized to nine innings.
-
 **SS/9 = Total Pitch Stress / Innings Pitched × 9**
 
-**What it tells you:** How quickly does a pitcher accumulate
-stress workload while pitching?
-
-This differs from APS because it incorporates both stress and
-pitch volume. Two pitchers can have the same APS, but the pitcher
-who requires more pitches to complete an inning will accumulate
-more total stress and therefore have a higher SS/9.
+It incorporates both the stress level of pitches and the number
+of pitches required to record innings.
         """
     )
 
@@ -642,52 +664,3 @@ elif page == "Leaderboard":
                 ),
         },
     )
-
-
-    # ==============================================
-    # QUICK DEFINITIONS
-    # ==============================================
-
-    st.divider()
-
-    st.subheader(
-        "Metric Definitions"
-    )
-
-    col1, col2 = (
-        st.columns(2)
-    )
-
-    with col1:
-
-        st.markdown(
-            """
-**APS — Average Pitch Stress**
-
-Average stress level of all pitches thrown.
-Lower is better.
-
-**APS+ — Average Pitch Stress Plus**
-
-Standardized APS relative to the selected season's
-comparison population.
-
-100 is average. Higher is better.
-            """
-        )
-
-    with col2:
-
-        st.markdown(
-            """
-**PS% — Pitch Stress Percentage**
-
-Percentage of pitches with a Pitch Stress Score
-of 40 or higher. Lower is better.
-
-**SS/9 — Stress Score per 9 Innings**
-
-Total accumulated Pitch Stress normalized to
-nine innings. Lower is better.
-            """
-        )
